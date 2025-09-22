@@ -6,7 +6,7 @@ import re
 import time
 from flask import Response
 import json
-from googlesearch import search #pip install googlesearch-python
+from googlesearch import search  # pip install googlesearch-python
 from flask import render_template
 
 app = Flask(__name__)
@@ -49,27 +49,19 @@ def get_player(player_name):
     role = personal[2].text.strip()
     
     icc = cric.find_all("div", class_="cb-col cb-col-25 cb-plyr-rank text-right")
-    # Batting rankings
-    tb = icc[0].text.strip()   # Test batting
-    ob = icc[1].text.strip()   # ODI batting
-    twb = icc[2].text.strip()  # T20 batting
-    
-    # Bowling rankings
-    tbw = icc[3].text.strip()  # Test bowling
-    obw = icc[4].text.strip()  # ODI bowling
-    twbw = icc[5].text.strip() # T20 bowling
+    tb, ob, twb = icc[0].text.strip(), icc[1].text.strip(), icc[2].text.strip()
+    tbw, obw, twbw = icc[3].text.strip(), icc[4].text.strip(), icc[5].text.strip()
 
     # Summary of the stats
     summary = cric.find_all("div", class_="cb-plyr-tbl")
-    batting = summary[0]
-    bowling = summary[1]
+    batting, bowling = summary[0], summary[1]
 
     # Batting statistics
     bat_rows = batting.find("tbody").find_all("tr")
     batting_stats = {}
     for row in bat_rows:
         cols = row.find_all("td")
-        format_name = cols[0].text.strip().lower()  # e.g., "Test", "ODI", "T20"
+        format_name = cols[0].text.strip().lower()
         batting_stats[format_name] = {
             "matches": cols[1].text.strip(),
             "runs": cols[3].text.strip(),
@@ -85,7 +77,7 @@ def get_player(player_name):
     bowling_stats = {}
     for row in bowl_rows:
         cols = row.find_all("td")
-        format_name = cols[0].text.strip().lower()  # e.g., "Test", "ODI", "T20"
+        format_name = cols[0].text.strip().lower()
         bowling_stats[format_name] = {
             "balls": cols[3].text.strip(),
             "runs": cols[4].text.strip(),
@@ -95,23 +87,14 @@ def get_player(player_name):
             "five_wickets": cols[11].text.strip(),
         }
 
-    # Create player stats dictionary
     player_data = {
         "name": name,
         "country": country,
         "image": image_url,
         "role": role,
         "rankings": {
-            "batting": {
-                "test": tb,
-                "odi": ob,
-                "t20": twb
-            },
-            "bowling": {
-                "test": tbw,
-                "odi": obw,
-                "t20": twbw
-            }
+            "batting": {"test": tb, "odi": ob, "t20": twb},
+            "bowling": {"test": tbw, "odi": obw, "t20": twbw}
         },
         "batting_stats": batting_stats,
         "bowling_stats": bowling_stats
@@ -122,49 +105,35 @@ def get_player(player_name):
 
 @app.route('/schedule')
 def schedule():
-    link = f"https://www.cricbuzz.com/cricket-schedule/upcoming-series/international"
+    link = "https://www.cricbuzz.com/cricket-schedule/upcoming-series/international"
     source = requests.get(link).text
     page = BeautifulSoup(source, "lxml")
 
-    # Find all match containers
     match_containers = page.find_all("div", class_="cb-col-100 cb-col")
-
     matches = []
 
-    # Iterate through each match container
     for container in match_containers:
-        # Extract match details
         date = container.find("div", class_="cb-lv-grn-strip text-bold")
         match_info = container.find("div", class_="cb-col-100 cb-col")
-        
         if date and match_info:
-            match_date = date.text.strip()
-            match_details = match_info.text.strip()
-            matches.append(f"{match_date} - {match_details}")
+            matches.append(f"{date.text.strip()} - {match_info.text.strip()}")
     
     return jsonify(matches)
 
 
 @app.route('/live')
 def live_matches():
-    link = f"https://www.cricbuzz.com/cricket-match/live-scores"
+    link = "https://www.cricbuzz.com/cricket-match/live-scores"
     source = requests.get(link).text
     page = BeautifulSoup(source, "lxml")
 
-    page = page.find("div",class_="cb-col cb-col-100 cb-bg-white")
-    matches = page.find_all("div",class_="cb-scr-wll-chvrn cb-lv-scrs-col")
+    page = page.find("div", class_="cb-col cb-col-100 cb-bg-white")
+    matches = page.find_all("div", class_="cb-scr-wll-chvrn cb-lv-scrs-col")
 
-    live_matches = []
-
-    for i in range(len(matches)):
-        live_matches.append(matches[i].text.strip())
-    
-    
+    live_matches = [m.text.strip() for m in matches]
     return jsonify(live_matches)
+
 
 @app.route('/')
 def website():
     return render_template('index.html')
-
-if __name__ =="__main__":
-    app.run(debug=True)
